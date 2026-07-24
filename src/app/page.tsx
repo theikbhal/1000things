@@ -1,65 +1,131 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useCallback } from "react";
+import { Toaster, toast } from "sonner";
+import { useGrid } from "@/hooks/useGrid";
+import { useGamification } from "@/hooks/useGamification";
+import { Header } from "@/components/Header";
+import { GridView } from "@/components/GridView";
+import { CalendarView } from "@/components/CalendarView";
+import { BulkToolbar } from "@/components/BulkToolbar";
+import { SettingsPanel } from "@/components/SettingsPanel";
+import { ConfettiOverlay } from "@/components/ConfettiOverlay";
+import { Onboarding } from "@/components/Onboarding";
+import { Cloud, Sparkles, ArrowUp } from "lucide-react";
 
 export default function Home() {
+  const grid = useGrid();
+  const game = useGamification(grid.filledCells);
+
+  useEffect(() => {
+    if (grid.filledCells > 0) {
+      const leveledUp = game.checkLevelUp();
+      if (leveledUp) {
+        toast(`${game.currentLevel.name} Level Reached!`, {
+          description: `You filled ${grid.filledCells} cells!`,
+          icon: "🏆",
+          duration: 4000,
+        });
+      }
+    }
+  }, [grid.filledCells, game.currentLevel.name]);
+
+  const handleFillDummy = useCallback(() => {
+    grid.fillWithDummy();
+    toast.success("Demo data loaded!", { description: "Cells populated with sample content" });
+  }, [grid]);
+
+  const handleReset = useCallback(() => {
+    grid.resetCells();
+    toast.info("Grid reset", { description: "All cells cleared" });
+  }, [grid]);
+
+  const handleExport = useCallback(() => {
+    grid.exportData();
+    toast.success("Exported!", { description: "Grid data downloaded" });
+  }, [grid]);
+
+  const handleExportSelected = useCallback(() => {
+    grid.exportSelected();
+    toast.success("Selected cells exported!");
+  }, [grid]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-zinc-50 via-white to-zinc-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          style: {
+            borderRadius: "12px",
+            background: "white",
+            border: "1px solid #e4e4e7",
+          },
+        }}
+      />
+
+      <ConfettiOverlay show={game.showConfetti} />
+
+      <Onboarding onComplete={() => {}} />
+
+      <Header
+        gridName={grid.config.name}
+        level={game.currentLevel}
+        progress={game.progress}
+        filledCells={grid.filledCells}
+        totalCells={grid.totalCells}
+        view={grid.view}
+        onViewChange={grid.setView}
+        onOpenSettings={() => grid.setShowSettings(true)}
+      />
+
+      <main className="flex-1">
+        <div className="px-4 pb-2">
+          <BulkToolbar
+            selectedCount={grid.selectedCellIds.size}
+            totalCells={grid.totalCells}
+            filledCells={grid.filledCells}
+            onSelectAll={grid.selectAll}
+            onDeselectAll={grid.deselectAll}
+            onBulkSetType={grid.bulkSetType}
+            onBulkUpdateFromText={grid.bulkUpdateFromText}
+            onReset={handleReset}
+            onFillDummy={handleFillDummy}
+            onExport={handleExport}
+            onExportSelected={handleExportSelected}
+            onImport={grid.importData}
+            onImportText={grid.importText}
+          />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+        {grid.view === "grid" ? (
+          <GridView
+            config={grid.config}
+            cells={grid.cells}
+            selectedCellIds={grid.selectedCellIds}
+            getCell={grid.getCell}
+            getCellKey={grid.getCellKey}
+            setCellType={grid.setCellType}
+            toggleSelect={grid.toggleSelect}
+            updateCell={grid.updateCell}
+          />
+        ) : (
+          <CalendarView
+            cells={grid.cells}
+            onSwitchToGrid={() => grid.setView("grid")}
+          />
+        )}
       </main>
+
+      <SettingsPanel
+        open={grid.showSettings}
+        config={grid.config}
+        onClose={() => grid.setShowSettings(false)}
+        onUpdateConfig={grid.setConfig}
+      />
+
+      <footer className="border-t border-zinc-200 dark:border-zinc-800 py-3 px-4 text-center text-xs text-zinc-400">
+        1000 Things — Collect, Organize, Level Up
+      </footer>
     </div>
   );
 }
